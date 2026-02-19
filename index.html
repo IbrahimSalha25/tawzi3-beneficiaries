@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="توزيع - نظام إدارة المساعدات الإنسانية" />
+    <meta name="theme-color" content="#3cd37a" />
+    <title>توزيع - Tawzi3</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- ============ Toast Container ============ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ============ Splash Screen ============ -->
+    <div id="splash-screen">
+      <div class="splash-logo">📦</div>
+      <h1>توزيع</h1>
+      <p>نظام إدارة المساعدات الإنسانية</p>
+      <div class="splash-spinner"></div>
+    </div>
+
+    <!-- ============ Login Screen ============ -->
+    <div id="login-screen">
+      <div class="login-container">
+        <div class="login-logo">📦</div>
+        <h2>تسجيل الدخول</h2>
+        <p class="login-subtitle">أدخل بياناتك للوصول إلى حسابك</p>
+
+        <div class="error-message" id="login-error"></div>
+
+        <form id="login-form">
+          <div class="input-group">
+            <label for="national-id">رقم الهوية</label>
+            <input
+              type="text"
+              id="national-id"
+              placeholder="أدخل رقم الهوية"
+              required
+              autocomplete="username"
+            />
+          </div>
+          <div class="input-group">
+            <label for="credential">رقم الهاتف أو كلمة المرور</label>
+            <input
+              type="text"
+              id="credential"
+              placeholder="أدخل رقم الهاتف أو كلمة المرور"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button type="submit" class="btn" id="login-btn">تسجيل الدخول</button>
+          <div class="spinner hidden" id="login-spinner"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============ Main Application ============ -->
+    <div id="app">
+      <!-- Header -->
+      <header>
+        <div class="header-brand">
+          <span class="header-brand-icon">📦</span>
+          <h1>توزيع</h1>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" id="qr-btn" title="عرض رمز QR">📷</button>
+        </div>
+      </header>
+
+      <!-- Navigation -->
+      <nav>
+        <button class="nav-btn active" data-section="info">
+          <span class="nav-icon">👤</span>
+          <span>المعلومات</span>
+        </button>
+        <button class="nav-btn" data-section="parcels">
+          <span class="nav-icon">📦</span>
+          <span>الطرود</span>
+        </button>
+        <button class="nav-btn" data-section="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>الإعدادات</span>
+        </button>
+      </nav>
+
+      <!-- Content Area -->
+      <div class="content">
+        <!-- ======== Beneficiary Info Section ======== -->
+        <div id="info" class="section active">
+          <div class="spinner" id="info-spinner"></div>
+          <div id="info-content" class="hidden">
+            <!-- Profile Header -->
+            <div class="card profile-header">
+              <div class="profile-avatar">👤</div>
+              <div class="profile-name" id="profile-name">---</div>
+              <div class="profile-id" id="profile-id-display">---</div>
+            </div>
+
+            <!-- Camp Info -->
+            <div class="card">
+              <div class="card-title">
+                <span class="card-icon">🏕️</span>
+                معلومات المخيم
+              </div>
+              <div class="info-row">
+                <span class="info-label">اسم المخيم</span>
+                <span class="info-value" id="camp-name">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">الموقع</span>
+                <span class="info-value" id="camp-location">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">اسم المندوب</span>
+                <span class="info-value" id="camp-representative">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">هاتف المندوب</span>
+                <span class="info-value" id="camp-rep-phone">---</span>
+              </div>
+            </div>
+
+            <!-- Personal Info -->
+            <div class="card">
+              <div class="card-title">
+                <span class="card-icon">🪪</span>
+                المعلومات الشخصية
+              </div>
+              <div class="info-row">
+                <span class="info-label">الاسم الكامل</span>
+                <span class="info-value" id="head-name">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">رقم الهوية</span>
+                <span class="info-value" id="head-id">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">رقم الهاتف</span>
+                <span class="info-value" id="head-phone">---</span>
+              </div>
+            </div>
+
+            <!-- Family Composition -->
+            <div class="card">
+              <div class="card-title">
+                <span class="card-icon">👨‍👩‍👧‍👦</span>
+                تكوين الأسرة
+              </div>
+              <div class="family-grid">
+                <div class="family-stat family-total">
+                  <div class="stat-value" id="family-total">0</div>
+                  <div class="stat-label">إجمالي أفراد الأسرة</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="males-0-2">0</div>
+                  <div class="stat-label">ذكور 0-2</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="females-0-2">0</div>
+                  <div class="stat-label">إناث 0-2</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="males-5-17">0</div>
+                  <div class="stat-label">ذكور 5-17</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="females-5-17">0</div>
+                  <div class="stat-label">إناث 5-17</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="males-17-60">0</div>
+                  <div class="stat-label">ذكور 17-60</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="females-17-60">0</div>
+                  <div class="stat-label">إناث 17-60</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="males-60-plus">0</div>
+                  <div class="stat-label">ذكور 60+</div>
+                </div>
+                <div class="family-stat">
+                  <div class="stat-value" id="females-60-plus">0</div>
+                  <div class="stat-label">إناث 60+</div>
+                </div>
+                <div class="family-stat" style="grid-column: 1 / -1">
+                  <div class="stat-value" id="disabled-count">0</div>
+                  <div class="stat-label">ذوي الإعاقة</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Original Location -->
+            <div class="card">
+              <div class="card-title">
+                <span class="card-icon">📍</span>
+                الموقع الأصلي
+              </div>
+              <div class="info-row">
+                <span class="info-label">المحافظة</span>
+                <span class="info-value" id="governorate">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">البلدة</span>
+                <span class="info-value" id="town">---</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">معلم بارز</span>
+                <span class="info-value" id="landmark">---</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======== Parcels Section ======== -->
+        <div id="parcels" class="section">
+          <div class="spinner" id="parcels-spinner"></div>
+          <div id="parcels-content" class="hidden">
+            <div class="parcels-grid" id="parcels-grid"></div>
+          </div>
+        </div>
+
+        <!-- ======== Settings Section ======== -->
+        <div id="settings" class="section">
+          <div class="settings-list">
+            <div class="setting-item">
+              <div class="setting-icon">👤</div>
+              <span class="setting-label" id="user-name-display"
+                >اسم المستفيد</span
+              >
+            </div>
+
+            <div class="setting-item" id="theme-toggle">
+              <div class="setting-icon">🌙</div>
+              <span class="setting-label">الوضع الليلي</span>
+              <div class="toggle-switch" id="theme-switch"></div>
+            </div>
+
+            <div class="setting-item" id="complaint-btn">
+              <div class="setting-icon">📝</div>
+              <span class="setting-label">تقديم شكوى</span>
+              <span class="setting-arrow">←</span>
+            </div>
+
+            <div class="setting-item" id="change-password-btn">
+              <div class="setting-icon">🔐</div>
+              <span class="setting-label">تغيير كلمة المرور</span>
+              <span class="setting-arrow">←</span>
+            </div>
+
+            <div class="setting-item danger" id="logout-btn">
+              <div class="setting-icon">🚪</div>
+              <span class="setting-label">تسجيل الخروج</span>
+              <span class="setting-arrow">←</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MODALS ============ -->
+
+    <!-- QR Code Modal -->
+    <div class="modal-overlay" id="qr-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">📷 رمز QR الخاص بك</h3>
+          <button class="close-btn" onclick="closeModal('qr-modal')">✕</button>
+        </div>
+        <div class="qr-container">
+          <div class="qr-box" id="qr-code"></div>
+          <p class="qr-name" id="qr-name"></p>
+          <p class="qr-id" id="qr-id-text"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parcel Details Modal -->
+    <div class="modal-overlay" id="parcel-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">📦 تفاصيل الطرد</h3>
+          <button class="close-btn" onclick="closeModal('parcel-modal')">
+            ✕
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <span class="card-icon">📋</span>
+            معلومات الطرد
+          </div>
+          <div class="info-row">
+            <span class="info-label">اسم الطرد</span>
+            <span class="info-value" id="detail-parcel-name">---</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">النوع</span>
+            <span class="info-value" id="detail-parcel-type">---</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">حالة الطرد</span>
+            <span class="info-value" id="detail-parcel-status">---</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">التاريخ</span>
+            <span class="info-value" id="detail-parcel-date">---</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">الوصف</span>
+            <span class="info-value" id="detail-parcel-desc">---</span>
+          </div>
+        </div>
+        <div class="card mt-16">
+          <div class="card-title">
+            <span class="card-icon">🚚</span>
+            حالة التوزيع
+          </div>
+          <div class="info-row">
+            <span class="info-label">حالة الاستلام</span>
+            <span class="info-value" id="detail-dist-status">---</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">تاريخ التوزيع</span>
+            <span class="info-value" id="detail-dist-date">---</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complaint Modal -->
+    <div class="modal-overlay" id="complaint-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">📝 تقديم شكوى</h3>
+          <button class="close-btn" onclick="closeModal('complaint-modal')">
+            ✕
+          </button>
+        </div>
+        <div class="input-group">
+          <label for="complaint-text">نص الشكوى</label>
+          <textarea
+            id="complaint-text"
+            placeholder="اكتب شكواك هنا بالتفصيل..."
+            rows="5"
+          ></textarea>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary"
+            onclick="closeModal('complaint-modal')"
+          >
+            إلغاء
+          </button>
+          <button
+            class="btn"
+            id="submit-complaint-btn"
+            onclick="submitComplaint()"
+          >
+            إرسال الشكوى
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="password-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">🔐 تغيير كلمة المرور</h3>
+          <button class="close-btn" onclick="closeModal('password-modal')">
+            ✕
+          </button>
+        </div>
+
+        <!-- Step 1: Verify current credential -->
+        <div id="password-step-verify" class="password-step">
+          <div class="password-info" id="password-info-text">
+            أدخل البيانات للتحقق من هويتك
+          </div>
+          <div class="input-group">
+            <label for="verify-input" id="verify-label">التحقق</label>
+            <input type="text" id="verify-input" placeholder="أدخل البيانات" />
+          </div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              onclick="closeModal('password-modal')"
+            >
+              إلغاء
+            </button>
+            <button
+              class="btn"
+              id="verify-btn"
+              onclick="verifyCurrentCredential()"
+            >
+              تحقق
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Set new password -->
+        <div id="password-step-new" class="password-step">
+          <div class="password-info">أدخل كلمة المرور الجديدة</div>
+          <div class="input-group">
+            <label for="new-password-input">كلمة المرور الجديدة</label>
+            <input
+              type="password"
+              id="new-password-input"
+              placeholder="أدخل كلمة المرور الجديدة (6 أحرف على الأقل)"
+            />
+          </div>
+          <div class="input-group">
+            <label for="confirm-password-input">تأكيد كلمة المرور</label>
+            <input
+              type="password"
+              id="confirm-password-input"
+              placeholder="أعد إدخال كلمة المرور الجديدة"
+            />
+          </div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              onclick="closeModal('password-modal')"
+            >
+              إلغاء
+            </button>
+            <button
+              class="btn"
+              id="save-password-btn"
+              onclick="saveNewPassword()"
+            >
+              حفظ كلمة المرور
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ External Scripts ============ -->
+    <!-- Firebase SDK (CDN compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- App Modules (order matters: config → auth → data → main) -->
+    <script src="js/firebaseConfig.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/beneficiary.js"></script>
+    <script src="js/parcels.js"></script>
+    <script src="js/complaints.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
