@@ -188,25 +188,44 @@ function showApp() {
 /**
  * Generate and display the beneficiary QR code
  * Contains: beneficiary_id, head_name, campId
+ * Uses compact keys and low error correction to avoid QR overflow
  */
 function generateQRCode() {
   const qrContainer = document.getElementById("qr-code");
   qrContainer.innerHTML = "";
 
+  // Use short keys to reduce QR data length
   const qrData = JSON.stringify({
-    beneficiary_id: currentUser.id || currentDocId,
-    head_name: currentUser.head_name,
-    campId: currentCampId,
+    id: currentUser.id || currentDocId,
+    name: currentUser.head_name,
+    camp: currentCampId,
   });
 
-  new QRCode(qrContainer, {
-    text: qrData,
-    width: 200,
-    height: 200,
-    colorDark: "#1b4136",
-    colorLight: "#ffffff",
-    correctLevel: QRCode.CorrectLevel.M,
-  });
+  try {
+    new QRCode(qrContainer, {
+      text: qrData,
+      width: 220,
+      height: 220,
+      colorDark: "#1b4136",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.L, // Low correction = more data capacity
+    });
+  } catch (e) {
+    // Fallback: use only the beneficiary ID if data is still too long
+    console.warn(
+      "QR with full data failed, using ID-only fallback:",
+      e.message,
+    );
+    qrContainer.innerHTML = "";
+    new QRCode(qrContainer, {
+      text: String(currentUser.id || currentDocId),
+      width: 220,
+      height: 220,
+      colorDark: "#0b0d0dff",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.L,
+    });
+  }
 
   document.getElementById("qr-name").textContent =
     currentUser.head_name || "---";
