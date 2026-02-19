@@ -5,7 +5,8 @@
 /**
  * Load all parcels for the logged-in beneficiary
  * 1. Fetches distributions from camps/{campId}/distribution
- * 2. For each distribution, fetches the parcel from camps/{campId}/parcels
+ * 2. For each distribution, queries parcels where id field == dist.parcel_id
+ *    (parcel_id is a numeric field, NOT the Firestore document ID)
  * 3. Excludes parcels where parcel.status == "انتهى" AND distribution.status == "لم يستلم"
  * 4. Sorts by parcel date DESC
  */
@@ -18,111 +19,46 @@ async function loadParcels() {
   content.classList.add("hidden");
 
   try {
-    // Debug: Log current user session data
-    console.log("=== PARCELS LOADING DEBUG ===");
-    console.log("currentCampId:", currentCampId);
-    console.log("currentDocId:", currentDocId);
-    console.log("currentUser.id:", currentUser.id);
-    console.log("currentUser.head_id_number:", currentUser.head_id_number);
-    console.log("Full currentUser:", JSON.parse(JSON.stringify(currentUser)));
-
     // Step 1: Get all distributions for the logged beneficiary
-    // Try multiple possible beneficiary_id values
-    const possibleIds = [
-      currentUser.id,
-      currentDocId,
-      currentUser.head_id_number,
-      Number(currentUser.id),
-      Number(currentDocId),
-      Number(currentUser.head_id_number),
-    ].filter(Boolean);
-
-    // Remove duplicates
-    const uniqueIds = [...new Set(possibleIds.map(String))];
-    console.log(
-      "Searching distributions with beneficiary_id values:",
-      uniqueIds,
-    );
-
-    // First, let's see ALL distributions in this camp for debugging
-    const allDistSnapshot = await db
-      .collection("camps")
-      .doc(currentCampId)
-      .collection("distribution")
-      .get();
-
-    console.log("Total distributions in camp:", allDistSnapshot.size);
-    allDistSnapshot.docs.forEach((doc) => {
-      const d = doc.data();
-      console.log(
-        "Distribution doc:",
-        doc.id,
-        "beneficiary_id:",
-        d.beneficiary_id,
-        "type:",
-        typeof d.beneficiary_id,
-        "parcel_id:",
-        d.parcel_id,
-      );
-    });
-
-    // Try the primary query
+    // distribution.beneficiary_id is stored as a number in Firestore
     let distSnapshot = await db
       .collection("camps")
       .doc(currentCampId)
       .collection("distribution")
-      .where("beneficiary_id", "==", currentUser.id || currentDocId)
+      .where("beneficiary_id", "==", currentUser.id)
       .get();
 
-    console.log(
-      "Primary query result (beneficiary_id == '" +
-        (currentUser.id || currentDocId) +
-        "'):",
-      distSnapshot.size,
-      "docs",
-    );
-
-    // If empty, try with numeric ID
+    // Fallback: try with numeric conversion
     if (distSnapshot.empty && currentUser.id) {
-      console.log(
-        "Trying with numeric beneficiary_id:",
-        Number(currentUser.id),
-      );
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("distribution")
         .where("beneficiary_id", "==", Number(currentUser.id))
         .get();
-      console.log("Numeric query result:", distSnapshot.size, "docs");
     }
 
-    // If still empty, try with head_id_number
+    // Fallback: try with head_id_number
     if (distSnapshot.empty && currentUser.head_id_number) {
-      console.log("Trying with head_id_number:", currentUser.head_id_number);
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("distribution")
         .where("beneficiary_id", "==", currentUser.head_id_number)
         .get();
-      console.log("head_id_number query result:", distSnapshot.size, "docs");
     }
 
-    // If still empty, try with docId
+    // Fallback: try with docId
     if (distSnapshot.empty) {
-      console.log("Trying with currentDocId:", currentDocId);
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("distribution")
         .where("beneficiary_id", "==", currentDocId)
         .get();
-      console.log("docId query result:", distSnapshot.size, "docs");
     }
 
     if (distSnapshot.empty) {
-      console.log("No distributions found for any beneficiary_id variant");
       grid.innerHTML = `
         <div class="parcels-empty">
           <div class="empty-icon">
@@ -139,58 +75,42 @@ async function loadParcels() {
     console.log("Found", distSnapshot.size, "distributions. Processing...");
 
     // Step 2: Fetch parcel details for each distribution
+    // IMPORTANT: parcel_id in distribution is a numeric 'id' field INSIDE parcel docs,
+    // NOT the Firestore document ID (which is a UUID). So we must QUERY by id field.
     const parcelsData = [];
 
     for (const distDoc of distSnapshot.docs) {
       const dist = distDoc.data();
-      console.log(
-        "Processing distribution:",
-        distDoc.id,
-        "parcel_id:",
-        dist.parcel_id,
-        "type:",
-        typeof dist.parcel_id,
-      );
+      const parcelIdValue = dist.parcel_id;
 
-      // Fetch the parcel document
-      const parcelRef = db
+      // Query parcels subcollection where the 'id' field matches parcel_id
+      let parcelSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("parcels")
-        .doc(String(dist.parcel_id));
+        .where("id", "==", parcelIdValue)
+        .get();
 
-      console.log("Fetching parcel at path:", parcelRef.path);
-      const parcelDoc = await parcelRef.get();
-
-      if (!parcelDoc.exists) {
-        console.warn("Parcel doc NOT FOUND at:", parcelRef.path);
-
-        // Debug: list all parcels in this camp
-        const allParcels = await db
+      // Fallback: try numeric conversion if needed
+      if (parcelSnapshot.empty) {
+        parcelSnapshot = await db
           .collection("camps")
           .doc(currentCampId)
           .collection("parcels")
+          .where("id", "==", Number(parcelIdValue))
           .get();
-        console.log("All parcels in camp (" + allParcels.size + "):");
-        allParcels.docs.forEach((p) => {
-          console.log("  Parcel doc ID:", p.id, "data:", p.data());
-        });
+      }
+
+      if (parcelSnapshot.empty) {
+        console.warn("No parcel found with id ==", parcelIdValue);
         continue;
       }
 
+      const parcelDoc = parcelSnapshot.docs[0];
       const parcel = parcelDoc.data();
-      console.log(
-        "Parcel found:",
-        parcelDoc.id,
-        "name:",
-        parcel.name,
-        "status:",
-        parcel.status,
-      );
 
       // Step 3: Exclude parcels where parcel.status == "انتهى" AND distribution.status == "لم يستلم"
       if (parcel.status === "انتهى" && dist.status === "لم يستلم") {
-        console.log("Excluded (finished + not received):", parcel.name);
         continue;
       }
 
@@ -212,9 +132,6 @@ async function loadParcels() {
       const dateB = b.parcelDate || "";
       return dateB.localeCompare(dateA);
     });
-
-    console.log("Final parcels to render:", parcelsData.length, parcelsData);
-    console.log("=== END PARCELS DEBUG ===");
 
     // Render the grid
     grid.innerHTML = "";
@@ -263,7 +180,6 @@ async function loadParcels() {
     content.classList.remove("hidden");
   } catch (error) {
     console.error("Error loading parcels:", error);
-    console.error("Error stack:", error.stack);
     showToast("حدث خطأ أثناء تحميل الطرود", "error");
     spinner.classList.add("hidden");
   }

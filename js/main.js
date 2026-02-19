@@ -203,10 +203,10 @@ function generateQRCode() {
 
   try {
     new QRCode(qrContainer, {
-      text: qrData,
+      text: currentUser.head_id_number,
       width: 220,
       height: 220,
-      colorDark: "#1b4136",
+      colorDark: "#1a302aff",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.L, // Low correction = more data capacity
     });
@@ -218,10 +218,10 @@ function generateQRCode() {
     );
     qrContainer.innerHTML = "";
     new QRCode(qrContainer, {
-      text: String(currentUser.id || currentDocId),
+      text: String(currentUser.head_id_number || currentDocId),
       width: 220,
       height: 220,
-      colorDark: "#0b0d0dff",
+      colorDark: "#1b4136",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.L,
     });
