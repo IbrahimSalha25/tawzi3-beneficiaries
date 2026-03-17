@@ -21,6 +21,7 @@ async function loadParcels() {
   try {
     // Step 1: Get all distributions for the logged beneficiary
     // distribution.beneficiary_id is stored as a number in Firestore
+
     let distSnapshot = await db
       .collection("camps")
       .doc(currentCampId)
@@ -147,6 +148,8 @@ async function loadParcels() {
       `;
     } else {
       for (const item of parcelsData) {
+        console.log(item);
+
         const card = document.createElement("div");
         card.className = "parcel-card";
         card.innerHTML = `
