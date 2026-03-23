@@ -29,6 +29,8 @@ async function submitComplaint() {
       .doc(currentDocId)
       .collection("complaints")
       .add({
+        camp_id : currentCampId,
+        beneficiary_id :currentDocId,
         complaint_text: text,
         status: "pending",
         created_at: firebase.firestore.FieldValue.serverTimestamp(),
