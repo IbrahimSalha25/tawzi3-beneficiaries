@@ -23,10 +23,6 @@ async function submitComplaint() {
   try {
     // Write complaint to the correct subcollection path
     await db
-      .collection("camps")
-      .doc(currentCampId)
-      .collection("beneficiaries")
-      .doc(currentDocId)
       .collection("complaints")
       .add({
         camp_id : currentCampId,
