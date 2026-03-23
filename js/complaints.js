@@ -21,6 +21,10 @@ async function submitComplaint() {
   submitBtn.textContent = "جارٍ الإرسال...";
 
   try {
+
+
+
+    
     // Write complaint to the correct subcollection path
     await db
       .collection("complaints")
