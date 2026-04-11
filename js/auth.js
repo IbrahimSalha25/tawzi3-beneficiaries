@@ -52,6 +52,13 @@ async function login(nationalId, credential) {
     const campDoc = await db.collection("camps").doc(campId).get();
     const campData = campDoc.data();
 
+    // Check if this camp allows beneficiary portal access
+    if (campData.allow_beneficiary_portal === false) {
+      throw new Error(
+        "عذراً، هذا المخيم غير مسموح له باستخدام بوابة المستفيدين حالياً. يرجى التواصل مع المسؤول."
+      );
+    }
+
     // Build user session object
     const userSession = {
       docId: beneficiaryDocId,

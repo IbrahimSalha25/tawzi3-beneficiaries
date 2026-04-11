@@ -121,16 +121,18 @@ async function loadParcels() {
         parcelDescription: parcel.description || "",
         parcelType: parcel.type_parcel || "---",
         parcelStatus: parcel.status || "---",
-        parcelDate: parcel.date || "---",
+        parcelDateRaw: parcel.date || "",
+        parcelDate: formatArabicDate(parcel.date),
         distributionStatus: dist.status || "---",
-        distributionDate: dist.distribution_date || "---",
+        distributionDateRaw: dist.distribution_date || "",
+        distributionDate: formatArabicDate(dist.distribution_date),
       });
     }
 
     // Step 4: Sort by date DESC
     parcelsData.sort((a, b) => {
-      const dateA = a.parcelDate || "";
-      const dateB = b.parcelDate || "";
+      const dateA = a.parcelDateRaw || "";
+      const dateB = b.parcelDateRaw || "";
       return dateB.localeCompare(dateA);
     });
 
@@ -233,3 +235,27 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+/**
+ * Format string date to nice Arabic local format
+ * @param {string} dateString
+ * @returns {string} 
+ */
+function formatArabicDate(dateString) {
+  if (!dateString || dateString === "---" || dateString.trim() === "") return "---";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return new Intl.DateTimeFormat('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).format(date);
+  } catch (err) {
+    return dateString;
+  }
+}
+

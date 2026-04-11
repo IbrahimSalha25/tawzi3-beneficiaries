@@ -60,14 +60,15 @@
             />
           </div>
           <div class="input-group">
-            <label for="credential">رقم الهاتف أو كلمة المرور</label>
+            <label for="credential">كلمة المرور</label>
             <input
               type="text"
               id="credential"
-              placeholder="أدخل رقم الهاتف أو كلمة المرور"
+              placeholder="أدخل كلمة المرور"
               required
               autocomplete="current-password"
             />
+            <p class="input-hint">💡 كلمة المرور الافتراضية هي رقم هاتفك قبل تحديثها</p>
           </div>
           <button type="submit" class="btn" id="login-btn">تسجيل الدخول</button>
           <div class="spinner hidden" id="login-spinner"></div>
@@ -589,8 +590,8 @@
         <div class="modal-header">
           <h3 class="modal-title">
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -621,8 +622,8 @@
         <div class="modal-header">
           <h3 class="modal-title">
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -638,29 +639,16 @@
             </svg>
             تفاصيل الطرد
           </h3>
-          <button class="close-btn" onclick="closeModal('parcel-modal')">
-            ✕
-          </button>
+          <button class="close-btn" onclick="closeModal('parcel-modal')">✕</button>
         </div>
         <div class="card">
           <div class="card-title">
             <span class="card-icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
               </svg>
             </span>
             معلومات الطرد
@@ -686,23 +674,14 @@
             <span class="info-value" id="detail-parcel-desc">---</span>
           </div>
         </div>
-        <div class="card mt-16">
+        <div class="card">
           <div class="card-title">
             <span class="card-icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="1" y="3" width="15" height="13" />
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                <circle cx="5.5" cy="18.5" r="2.5" />
-                <circle cx="18.5" cy="18.5" r="2.5" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13"/>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
               </svg>
             </span>
             حالة التوزيع
@@ -724,28 +703,13 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 class="modal-title">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-              />
-              <path
-                d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-              />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
             تقديم شكوى
           </h3>
-          <button class="close-btn" onclick="closeModal('complaint-modal')">
-            ✕
-          </button>
+          <button class="close-btn" onclick="closeModal('complaint-modal')">✕</button>
         </div>
         <div class="input-group">
           <label for="complaint-text">نص الشكوى</label>
@@ -756,19 +720,8 @@
           ></textarea>
         </div>
         <div class="modal-actions">
-          <button
-            class="btn btn-secondary"
-            onclick="closeModal('complaint-modal')"
-          >
-            إلغاء
-          </button>
-          <button
-            class="btn"
-            id="submit-complaint-btn"
-            onclick="submitComplaint()"
-          >
-            إرسال الشكوى
-          </button>
+          <button class="btn btn-secondary" onclick="closeModal('complaint-modal')">إلغاء</button>
+          <button class="btn" id="submit-complaint-btn" onclick="submitComplaint()">إرسال الشكوى</button>
         </div>
       </div>
     </div>
@@ -778,24 +731,13 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 class="modal-title">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
             تغيير كلمة المرور
           </h3>
-          <button class="close-btn" onclick="closeModal('password-modal')">
-            ✕
-          </button>
+          <button class="close-btn" onclick="closeModal('password-modal')">✕</button>
         </div>
 
         <!-- Step 1: Verify current credential -->
@@ -808,55 +750,25 @@
             <input type="text" id="verify-input" placeholder="أدخل البيانات" />
           </div>
           <div class="modal-actions">
-            <button
-              class="btn btn-secondary"
-              onclick="closeModal('password-modal')"
-            >
-              إلغاء
-            </button>
-            <button
-              class="btn"
-              id="verify-btn"
-              onclick="verifyCurrentCredential()"
-            >
-              تحقق
-            </button>
+            <button class="btn btn-secondary" onclick="closeModal('password-modal')">إلغاء</button>
+            <button class="btn" id="verify-btn" onclick="verifyCurrentCredential()">تحقق</button>
           </div>
         </div>
 
         <!-- Step 2: Set new password -->
         <div id="password-step-new" class="password-step">
-          <div class="password-info">أدخل كلمة المرور الجديدة</div>
+          <div class="password-info">أدخل كلمة المرور الجديدة (6 أحرف على الأقل)</div>
           <div class="input-group">
             <label for="new-password-input">كلمة المرور الجديدة</label>
-            <input
-              type="password"
-              id="new-password-input"
-              placeholder="أدخل كلمة المرور الجديدة (6 أحرف على الأقل)"
-            />
+            <input type="password" id="new-password-input" placeholder="أدخل كلمة المرور الجديدة" />
           </div>
           <div class="input-group">
             <label for="confirm-password-input">تأكيد كلمة المرور</label>
-            <input
-              type="password"
-              id="confirm-password-input"
-              placeholder="أعد إدخال كلمة المرور الجديدة"
-            />
+            <input type="password" id="confirm-password-input" placeholder="أعد إدخال كلمة المرور الجديدة" />
           </div>
           <div class="modal-actions">
-            <button
-              class="btn btn-secondary"
-              onclick="closeModal('password-modal')"
-            >
-              إلغاء
-            </button>
-            <button
-              class="btn"
-              id="save-password-btn"
-              onclick="saveNewPassword()"
-            >
-              حفظ كلمة المرور
-            </button>
+            <button class="btn btn-secondary" onclick="closeModal('password-modal')">إلغاء</button>
+            <button class="btn" id="save-password-btn" onclick="saveNewPassword()">حفظ كلمة المرور</button>
           </div>
         </div>
       </div>
