@@ -19,28 +19,41 @@ async function loadParcels() {
   content.classList.add("hidden");
 
   try {
+    console.log("loadParcels: Starting loading parcels...");
+    console.log("loadParcels: currentUser =", currentUser);
+    console.log("loadParcels: currentCampId =", currentCampId);
+    console.log("loadParcels: currentDocId =", typeof currentDocId !== 'undefined' ? currentDocId : 'UNDEFINED');
+
+    let distSnapshot = { empty: true };
     // Step 1: Get all distributions for the logged beneficiary
     // distribution.beneficiary_id is stored as a number in Firestore
 
-    let distSnapshot = await db
-      .collection("camps")
-      .doc(currentCampId)
-      .collection("distribution")
-      .where("beneficiary_id", "==", currentUser.id)
-      .get();
-
-    // Fallback: try with numeric conversion
-    if (distSnapshot.empty && currentUser.id) {
+    if (currentUser && currentUser.uuid !== undefined) {
+      console.log("loadParcels: Trying query with currentUser.uuid ==", currentUser.uuid);
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("distribution")
-        .where("beneficiary_id", "==", Number(currentUser.id))
+        .where("beneficiary_id", "==", currentUser.uuid)
+        .get();
+    } else {
+      console.log("loadParcels: currentUser.uuid is undefined, skipping first query.");
+    }
+
+    // Fallback: try with numeric conversion
+    if (distSnapshot.empty && currentUser && currentUser.uuid !== undefined) {
+      console.log("loadParcels: Trying query with Number(currentUser.uuid) ==", Number(currentUser.uuid));
+      distSnapshot = await db
+        .collection("camps")
+        .doc(currentCampId)
+        .collection("distribution")
+        .where("beneficiary_id", "==", Number(currentUser.uuid))
         .get();
     }
 
     // Fallback: try with head_id_number
-    if (distSnapshot.empty && currentUser.head_id_number) {
+    if (distSnapshot.empty && currentUser && currentUser.head_id_number !== undefined) {
+      console.log("loadParcels: Trying query with currentUser.head_id_number ==", currentUser.head_id_number);
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
@@ -50,16 +63,19 @@ async function loadParcels() {
     }
 
     // Fallback: try with docId
-    if (distSnapshot.empty) {
+    const safeDocId = typeof currentDocId !== 'undefined' ? currentDocId : undefined;
+    if (distSnapshot.empty && safeDocId !== undefined) {
+      console.log("loadParcels: Trying query with currentDocId ==", safeDocId);
       distSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("distribution")
-        .where("beneficiary_id", "==", currentDocId)
+        .where("beneficiary_id", "==", safeDocId)
         .get();
     }
 
     if (distSnapshot.empty) {
+      console.log("loadParcels: No distributions found for the beneficiary after all queries.");
       grid.innerHTML = `
         <div class="parcels-empty">
           <div class="empty-icon">
@@ -73,7 +89,7 @@ async function loadParcels() {
       return;
     }
 
-    console.log("Found", distSnapshot.size, "distributions. Processing...");
+    console.log("loadParcels: Found", distSnapshot.size, "distributions. Processing...");
 
     // Step 2: Fetch parcel details for each distribution
     // IMPORTANT: parcel_id in distribution is a numeric 'id' field INSIDE parcel docs,
@@ -83,8 +99,16 @@ async function loadParcels() {
     for (const distDoc of distSnapshot.docs) {
       const dist = distDoc.data();
       const parcelIdValue = dist.parcel_id;
+      
+      console.log("loadParcels: Processing distribution item:", distDoc.id, "- target parcel_id:", parcelIdValue);
+
+      if (parcelIdValue === undefined) {
+        console.warn("loadParcels: WARNING - parcel_id is undefined in distribution doc:", distDoc.id);
+        continue;
+      }
 
       // Query parcels subcollection where the 'id' field matches parcel_id
+      console.log("loadParcels: Trying to query parcel with id ==", parcelIdValue);
       let parcelSnapshot = await db
         .collection("camps")
         .doc(currentCampId)
@@ -94,6 +118,7 @@ async function loadParcels() {
 
       // Fallback: try numeric conversion if needed
       if (parcelSnapshot.empty) {
+        console.log("loadParcels: Trying to query parcel with Number(id) ==", Number(parcelIdValue));
         parcelSnapshot = await db
           .collection("camps")
           .doc(currentCampId)
@@ -103,12 +128,13 @@ async function loadParcels() {
       }
 
       if (parcelSnapshot.empty) {
-        console.warn("No parcel found with id ==", parcelIdValue);
+        console.warn("loadParcels: No parcel found with id ==", parcelIdValue);
         continue;
       }
 
       const parcelDoc = parcelSnapshot.docs[0];
       const parcel = parcelDoc.data();
+      console.log("loadParcels: Found matching parcel doc:", parcelDoc.id, parcel);
 
       // Step 3: Exclude parcels where parcel.status == "انتهى" AND distribution.status == "لم يستلم"
       if (parcel.status === "انتهى" && dist.status === "لم يستلم") {
