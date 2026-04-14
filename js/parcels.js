@@ -3,181 +3,111 @@
 // ============================================
 
 /**
- * Load all parcels for the logged-in beneficiary
- * 1. Fetches distributions from camps/{campId}/distribution
- * 2. For each distribution, queries parcels where id field == dist.parcel_id
- *    (parcel_id is a numeric field, NOT the Firestore document ID)
- * 3. Excludes parcels where parcel.status == "انتهى" AND distribution.status == "لم يستلم"
- * 4. Sorts by parcel date DESC
+ * Load all parcels for the logged-in beneficiary.
+ *
+ * Data model (Firestore):
+ *   camps/{campId}/distribution/{distId}
+ *     - beneficiary_uuid    : string  (UUID of the beneficiary, = currentUser.uuid)
+ *     - parcel_uuid         : string  (UUID matching parcels.uuid field)
+ *     - status              : string  ("تم الاستلام" | "لم يستلم")
+ *     - distribution_date   : string
+ *     - uuid                : string  (own doc UUID)
+ *     - created_at          : string
+ *     - updated_at          : timestamp
+ *     - user                : string
+ *     - synced              : number
+ *
+ *   camps/{campId}/parcels/{parcelDocId}
+ *     - uuid           : string  (UUID identifier, matches distribution.parcel_uuid)
+ *     - name           : string
+ *     - description    : string
+ *     - type_parcel    : string
+ *     - status         : string  ("نشط" | "انتهى")
+ *     - date           : string
+ *
+ * Logic:
+ *   1. Query distribution where beneficiary_uuid == currentUser.uuid
+ *   2. For each distribution → get parcel where uuid == dist.parcel_uuid
+ *   3. Skip parcels where parcel.status == "انتهى" AND dist.status == "لم يستلم"
+ *   4. Sort results by parcel date DESC
  */
 async function loadParcels() {
   const spinner = document.getElementById("parcels-spinner");
   const content = document.getElementById("parcels-content");
-  const grid = document.getElementById("parcels-grid");
+  const grid    = document.getElementById("parcels-grid");
 
   spinner.classList.remove("hidden");
   content.classList.add("hidden");
 
   try {
-    console.log("loadParcels: Starting loading parcels...");
-    console.log("loadParcels: currentUser =", currentUser);
-    console.log("loadParcels: currentCampId =", currentCampId);
-    console.log("loadParcels: currentDocId =", typeof currentDocId !== 'undefined' ? currentDocId : 'UNDEFINED');
+    // ── Step 1: Fetch distributions for the current beneficiary ──────────────
+    // beneficiary_uuid in distribution is stored as the Firestore document ID.
+    const distSnapshot = await db
+      .collection("camps")
+      .doc(currentCampId)
+      .collection("distribution")
+      .where("beneficiary_uuid", "==", currentUser.uuid)
+      .get();
 
-    let distSnapshot = { empty: true };
-    // Step 1: Get all distributions for the logged beneficiary
-    // distribution.beneficiary_id is stored as a number in Firestore
-
-    if (currentUser && currentUser.uuid !== undefined) {
-      console.log("loadParcels: Trying query with currentUser.uuid ==", currentUser.uuid);
-      distSnapshot = await db
-        .collection("camps")
-        .doc(currentCampId)
-        .collection("distribution")
-        .where("beneficiary_id", "==", currentUser.uuid)
-        .get();
-    } else {
-      console.log("loadParcels: currentUser.uuid is undefined, skipping first query.");
-    }
-
-    // Fallback: try with numeric conversion
-    if (distSnapshot.empty && currentUser && currentUser.uuid !== undefined) {
-      console.log("loadParcels: Trying query with Number(currentUser.uuid) ==", Number(currentUser.uuid));
-      distSnapshot = await db
-        .collection("camps")
-        .doc(currentCampId)
-        .collection("distribution")
-        .where("beneficiary_id", "==", Number(currentUser.uuid))
-        .get();
-    }
-
-    // Fallback: try with head_id_number
-    if (distSnapshot.empty && currentUser && currentUser.head_id_number !== undefined) {
-      console.log("loadParcels: Trying query with currentUser.head_id_number ==", currentUser.head_id_number);
-      distSnapshot = await db
-        .collection("camps")
-        .doc(currentCampId)
-        .collection("distribution")
-        .where("beneficiary_id", "==", currentUser.head_id_number)
-        .get();
-    }
-
-    // Fallback: try with docId
-    const safeDocId = typeof currentDocId !== 'undefined' ? currentDocId : undefined;
-    if (distSnapshot.empty && safeDocId !== undefined) {
-      console.log("loadParcels: Trying query with currentDocId ==", safeDocId);
-      distSnapshot = await db
-        .collection("camps")
-        .doc(currentCampId)
-        .collection("distribution")
-        .where("beneficiary_id", "==", safeDocId)
-        .get();
-    }
-
+    // ── No distributions found ───────────────────────────────────────────────
     if (distSnapshot.empty) {
-      console.log("loadParcels: No distributions found for the beneficiary after all queries.");
-      grid.innerHTML = `
-        <div class="parcels-empty">
-          <div class="empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          </div>
-          <p>لا توجد طرود حالياً</p>
-        </div>
-      `;
+      grid.innerHTML = _emptyParcelsHTML();
       spinner.classList.add("hidden");
       content.classList.remove("hidden");
       return;
     }
 
-    console.log("loadParcels: Found", distSnapshot.size, "distributions. Processing...");
-
-    // Step 2: Fetch parcel details for each distribution
-    // IMPORTANT: parcel_id in distribution is a numeric 'id' field INSIDE parcel docs,
-    // NOT the Firestore document ID (which is a UUID). So we must QUERY by id field.
+    // ── Step 2: Fetch parcel details for each distribution ───────────────────
     const parcelsData = [];
 
     for (const distDoc of distSnapshot.docs) {
-      const dist = distDoc.data();
-      const parcelIdValue = dist.parcel_id;
-      
-      console.log("loadParcels: Processing distribution item:", distDoc.id, "- target parcel_id:", parcelIdValue);
+      const dist          = distDoc.data();
+      const parcelUuidVal = dist.parcel_uuid;
 
-      if (parcelIdValue === undefined) {
-        console.warn("loadParcels: WARNING - parcel_id is undefined in distribution doc:", distDoc.id);
-        continue;
-      }
+      if (!parcelUuidVal) continue;
 
-      // Query parcels subcollection where the 'id' field matches parcel_id
-      console.log("loadParcels: Trying to query parcel with id ==", parcelIdValue);
-      let parcelSnapshot = await db
+      // parcels are linked by their 'uuid' field (not the Firestore document ID)
+      const parcelSnap = await db
         .collection("camps")
         .doc(currentCampId)
         .collection("parcels")
-        .where("id", "==", parcelIdValue)
+        .where("uuid", "==", parcelUuidVal)
         .get();
 
-      // Fallback: try numeric conversion if needed
-      if (parcelSnapshot.empty) {
-        console.log("loadParcels: Trying to query parcel with Number(id) ==", Number(parcelIdValue));
-        parcelSnapshot = await db
-          .collection("camps")
-          .doc(currentCampId)
-          .collection("parcels")
-          .where("id", "==", Number(parcelIdValue))
-          .get();
-      }
+      if (parcelSnap.empty) continue;
 
-      if (parcelSnapshot.empty) {
-        console.warn("loadParcels: No parcel found with id ==", parcelIdValue);
-        continue;
-      }
+      const parcelDoc = parcelSnap.docs[0];
+      const parcel    = parcelDoc.data();
 
-      const parcelDoc = parcelSnapshot.docs[0];
-      const parcel = parcelDoc.data();
-      console.log("loadParcels: Found matching parcel doc:", parcelDoc.id, parcel);
-
-      // Step 3: Exclude parcels where parcel.status == "انتهى" AND distribution.status == "لم يستلم"
-      if (parcel.status === "انتهى" && dist.status === "لم يستلم") {
-        continue;
-      }
+      // ── Step 3: Exclude expired & un-received parcels ──────────────────────
+      if (parcel.status === "انتهى" && dist.status === "لم يستلم") continue;
 
       parcelsData.push({
-        parcelId: parcelDoc.id,
-        parcelName: parcel.name || "---",
-        parcelDescription: parcel.description || "",
-        parcelType: parcel.type_parcel || "---",
-        parcelStatus: parcel.status || "---",
-        parcelDateRaw: parcel.date || "",
-        parcelDate: formatArabicDate(parcel.date),
-        distributionStatus: dist.status || "---",
+        parcelId          : parcelDoc.id,
+        parcelName        : parcel.name         || "---",
+        parcelDescription : parcel.description  || "",
+        parcelType        : parcel.type_parcel   || "---",
+        parcelStatus      : parcel.status        || "---",
+        parcelDateRaw     : parcel.date          || "",
+        parcelDate        : formatArabicDate(parcel.date),
+        distributionStatus: dist.status          || "---",
         distributionDateRaw: dist.distribution_date || "",
-        distributionDate: formatArabicDate(dist.distribution_date),
+        distributionDate  : formatArabicDate(dist.distribution_date),
       });
     }
 
-    // Step 4: Sort by date DESC
-    parcelsData.sort((a, b) => {
-      const dateA = a.parcelDateRaw || "";
-      const dateB = b.parcelDateRaw || "";
-      return dateB.localeCompare(dateA);
-    });
+    // ── Step 4: Sort by parcel date DESC ─────────────────────────────────────
+    parcelsData.sort((a, b) =>
+      (b.parcelDateRaw || "").localeCompare(a.parcelDateRaw || "")
+    );
 
-    // Render the grid
+    // ── Render ────────────────────────────────────────────────────────────────
     grid.innerHTML = "";
 
     if (parcelsData.length === 0) {
-      grid.innerHTML = `
-        <div class="parcels-empty">
-          <div class="empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          </div>
-          <p>لا توجد طرود حالياً</p>
-        </div>
-      `;
+      grid.innerHTML = _emptyParcelsHTML();
     } else {
       for (const item of parcelsData) {
-        console.log(item);
-
         const card = document.createElement("div");
         card.className = "parcel-card";
         card.innerHTML = `
@@ -206,55 +136,74 @@ async function loadParcels() {
         grid.appendChild(card);
       }
     }
-
+  } catch (error) {
+    console.error("loadParcels error:", error);
+    showToast("حدث خطأ أثناء تحميل الطرود", "error");
+  } finally {
     spinner.classList.add("hidden");
     content.classList.remove("hidden");
-  } catch (error) {
-    console.error("Error loading parcels:", error);
-    showToast("حدث خطأ أثناء تحميل الطرود", "error");
-    spinner.classList.add("hidden");
   }
 }
 
 /**
- * Show full parcel details in a modal
- * @param {Object} item - Parcel + distribution data
+ * Returns the HTML for the empty-parcels state.
+ * @returns {string}
+ */
+function _emptyParcelsHTML() {
+  return `
+    <div class="parcels-empty">
+      <div class="empty-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+      </div>
+      <p>لا توجد طرود حالياً</p>
+    </div>
+  `;
+}
+
+// ============================================
+// Parcel Details Modal
+// ============================================
+
+/**
+ * Show full parcel details in a modal.
+ * @param {Object} item - Parcel + distribution data object
  */
 function showParcelDetails(item) {
-  document.getElementById("detail-parcel-name").textContent = item.parcelName;
-  document.getElementById("detail-parcel-type").textContent = item.parcelType;
-  document.getElementById("detail-parcel-status").textContent =
-    item.parcelStatus;
-  document.getElementById("detail-parcel-date").textContent = item.parcelDate;
-  document.getElementById("detail-parcel-desc").textContent =
-    item.parcelDescription || "لا يوجد وصف";
-  document.getElementById("detail-dist-status").textContent =
-    item.distributionStatus;
-  document.getElementById("detail-dist-date").textContent =
-    item.distributionDate;
+  document.getElementById("detail-parcel-name").textContent   = item.parcelName;
+  document.getElementById("detail-parcel-type").textContent   = item.parcelType;
+  document.getElementById("detail-parcel-status").textContent = item.parcelStatus;
+  document.getElementById("detail-parcel-date").textContent   = item.parcelDate;
+  document.getElementById("detail-parcel-desc").textContent   = item.parcelDescription || "لا يوجد وصف";
+  document.getElementById("detail-dist-status").textContent   = item.distributionStatus;
+  document.getElementById("detail-dist-date").textContent     = item.distributionDate;
   openModal("parcel-modal");
 }
 
+// ============================================
+// Helpers
+// ============================================
+
 /**
- * Get the CSS badge class based on distribution status
- * @param {string} status - The distribution status
- * @returns {string} - CSS class name
+ * CSS badge class based on distribution status.
+ * @param {string} status
+ * @returns {string}
  */
 function getStatusBadgeClass(status) {
   switch (status) {
-    case "استلم":
-      return "badge-received";
-    case "لم يستلم":
-      return "badge-pending";
-    default:
-      return "badge-active";
+    case "تم الاستلام": return "badge-received";
+    case "لم يستلم":   return "badge-pending";
+    default:           return "badge-active";
   }
 }
 
 /**
- * Escape HTML to prevent XSS
- * @param {string} text - Raw text
- * @returns {string} - Escaped text
+ * Escape HTML to prevent XSS.
+ * @param {string} text
+ * @returns {string}
  */
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -263,25 +212,24 @@ function escapeHtml(text) {
 }
 
 /**
- * Format string date to nice Arabic local format
+ * Format a date string into a readable Arabic locale format.
  * @param {string} dateString
- * @returns {string} 
+ * @returns {string}
  */
 function formatArabicDate(dateString) {
-  if (!dateString || dateString === "---" || dateString.trim() === "") return "---";
+  if (!dateString || dateString === "---" || !dateString.trim()) return "---";
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    return new Intl.DateTimeFormat('ar-EG', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return new Intl.DateTimeFormat("ar-EG", {
+      year   : "numeric",
+      month  : "long",
+      day    : "numeric",
+      hour   : "numeric",
+      minute : "2-digit",
+      hour12 : true,
     }).format(date);
-  } catch (err) {
+  } catch {
     return dateString;
   }
 }
-
