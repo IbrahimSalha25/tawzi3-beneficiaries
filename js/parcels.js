@@ -107,6 +107,9 @@ async function loadParcels() {
     if (parcelsData.length === 0) {
       grid.innerHTML = _emptyParcelsHTML();
     } else {
+      // ── Start queue timers immediately for all parcels ──────────────────────
+      _initQueueTimers(parcelsData);
+
       for (const item of parcelsData) {
         const card = document.createElement("div");
         card.className = "parcel-card";
@@ -165,18 +168,69 @@ function _emptyParcelsHTML() {
 }
 
 // ============================================
+// Queue Timers (timestamp-based)
+// ============================================
+
+// Global: stores { parcelId: { startedAt, totalDurationSec, peopleAhead, avgService } }
+window._queueTimers = window._queueTimers || {};
+
+/**
+ * Initialize queue timers for all parcels at load time.
+ * Uses timestamps so the countdown is always accurate
+ * even if the user hasn't opened the modal yet.
+ */
+function _initQueueTimers(parcelsData) {
+  for (const item of parcelsData) {
+    const id = item.parcelId || "default";
+
+    // Only set the timer once - don't reset if already started
+    if (window._queueTimers[id]) continue;
+
+    const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    const peopleAhead = (seed % 8) + 1;
+    const avgService = ((seed % 4) + 3);
+    const totalDurationSec = peopleAhead * avgService * 60;
+
+    window._queueTimers[id] = {
+      startedAt: Date.now(),
+      totalDurationSec: totalDurationSec,
+      peopleAhead: peopleAhead,
+      avgService: avgService,
+    };
+  }
+}
+
+/**
+ * Calculate remaining seconds for a parcel timer.
+ * @param {string} parcelId
+ * @returns {object} { remaining, total, peopleAhead, avgService }
+ */
+function _getQueueTimeRemaining(parcelId) {
+  const timer = window._queueTimers[parcelId];
+  if (!timer) return { remaining: 0, total: 0, peopleAhead: 0, avgService: 0 };
+
+  const elapsedSec = Math.floor((Date.now() - timer.startedAt) / 1000);
+  const remaining = Math.max(0, timer.totalDurationSec - elapsedSec);
+
+  return {
+    remaining: remaining,
+    total: timer.totalDurationSec,
+    peopleAhead: timer.peopleAhead,
+    avgService: timer.avgService,
+  };
+}
+
+// ============================================
 // Parcel Details Modal
 // ============================================
+
+// Interval for updating the DOM display (only when modal is open)
+window._queueDisplayInterval = null;
 
 /**
  * Show full parcel details in a modal.
  * @param {Object} item - Parcel + distribution data object
  */
-// Global storage for queue timers (keyed by parcelId)
-window._queueTimers = window._queueTimers || {};
-// Track which parcel is currently being viewed
-window._activeQueueParcelId = null;
-
 function showParcelDetails(item) {
   document.getElementById("detail-parcel-name").textContent = item.parcelName;
   document.getElementById("detail-parcel-type").textContent = item.parcelType;
@@ -186,81 +240,65 @@ function showParcelDetails(item) {
   document.getElementById("detail-dist-status").textContent = item.distributionStatus;
   document.getElementById("detail-dist-date").textContent = item.distributionDate;
 
-  // ── Queue Status Card (always visible) ──────────────────────────────────────
+  // ── Queue Status Card ──────────────────────────────────────────────────────
   const queueCard = document.getElementById("queue-status-card");
   queueCard.style.display = "block";
 
-  // Generate a queue ticket from beneficiary id
+  // Generate queue ticket from beneficiary id
   const userIdStr = (currentUser && currentUser.national_id) || "000";
   const ticketLetter = String.fromCharCode(65 + (userIdStr.charCodeAt(0) % 26));
   const ticketNum = (parseInt(userIdStr.slice(-3), 10) % 500) || 1;
   document.getElementById("queue-number").textContent = ticketLetter + "-" + ticketNum;
 
-  // Simulated queue metrics based on a hash of parcel id
-  const seed = item.parcelId
-    ? item.parcelId.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    : 42;
-  const peopleAhead = (seed % 8) + 1;
-  const avgService = ((seed % 4) + 3);
-  const waitMinutes = peopleAhead * avgService;
-
-  document.getElementById("queue-people-ahead").textContent = "يوجد " + peopleAhead + " أشخاص أمامك";
-  document.getElementById("queue-avg-service").textContent = "متوسط الخدمة: " + avgService + " دقائق";
-
-  // ── Persistent Live Countdown Timer ─────────────────────────────────────────
   const timerId = item.parcelId || "default";
-  window._activeQueueParcelId = timerId;
 
-  // Initialize timer for this parcel if first time
+  // If timer wasn't initialized yet (edge case), init it now
   if (!window._queueTimers[timerId]) {
+    const seed = timerId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    const peopleAhead = (seed % 8) + 1;
+    const avgService = ((seed % 4) + 3);
     window._queueTimers[timerId] = {
-      totalSeconds: waitMinutes * 60,
-      totalSecondsInitial: waitMinutes * 60,
-      intervalId: null,
+      startedAt: Date.now(),
+      totalDurationSec: peopleAhead * avgService * 60,
+      peopleAhead: peopleAhead,
+      avgService: avgService,
     };
   }
 
-  const timerState = window._queueTimers[timerId];
+  // Render function: calculates from timestamp each time
+  function renderQueueDisplay() {
+    const info = _getQueueTimeRemaining(timerId);
 
-  // Function to render current timer state to the DOM
-  function renderTimerToDOM() {
-    if (timerState.totalSeconds <= 0) {
+    document.getElementById("queue-people-ahead").textContent = "يوجد " + info.peopleAhead + " أشخاص أمامك";
+    document.getElementById("queue-avg-service").textContent = "متوسط الخدمة: " + info.avgService + " دقائق";
+
+    if (info.remaining <= 0) {
       document.getElementById("queue-wait-time").textContent = "حان دورك! 🎉";
       document.getElementById("queue-progress-fill").style.width = "100%";
       return;
     }
-    const mins = Math.floor(timerState.totalSeconds / 60);
-    const secs = timerState.totalSeconds % 60;
+
+    const mins = Math.floor(info.remaining / 60);
+    const secs = info.remaining % 60;
     const timeText = mins > 0
       ? mins + " دقيقة و " + secs + " ثانية"
       : secs + " ثانية";
     document.getElementById("queue-wait-time").textContent = timeText;
 
-    const elapsed = timerState.totalSecondsInitial - timerState.totalSeconds;
-    const progressPct = Math.min(100, Math.round((elapsed / timerState.totalSecondsInitial) * 100));
+    const progressPct = Math.min(100, Math.round(((info.total - info.remaining) / info.total) * 100));
     document.getElementById("queue-progress-fill").style.width = progressPct + "%";
   }
 
-  // Show current state immediately
-  renderTimerToDOM();
+  // Show immediately
+  renderQueueDisplay();
 
-  // Start background interval only if not already running
-  if (!timerState.intervalId) {
-    timerState.intervalId = setInterval(function () {
-      // Always count down in memory
-      if (timerState.totalSeconds > 0) {
-        timerState.totalSeconds--;
-      } else {
-        clearInterval(timerState.intervalId);
-        timerState.intervalId = null;
-      }
-
-      // Only update DOM if this parcel is currently being viewed
-      if (window._activeQueueParcelId === timerId) {
-        renderTimerToDOM();
-      }
-    }, 1000);
+  // Clear previous display interval
+  if (window._queueDisplayInterval) {
+    clearInterval(window._queueDisplayInterval);
   }
+
+  // Update display every second
+  window._queueDisplayInterval = setInterval(renderQueueDisplay, 1000);
 
   openModal("parcel-modal");
 }
