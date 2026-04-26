@@ -1085,6 +1085,147 @@ nav {
 .hidden { display: none !important; }
 .mt-16 { margin-top: 16px; }
 
+/* ---------- Queue Status Card ---------- */
+.queue-status-card {
+  margin: 20px 28px;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.queue-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #1a73e8, #ea4335, #f9ab00);
+}
+
+.queue-number-section {
+  text-align: center;
+  padding: 28px 24px 20px;
+}
+
+.queue-number-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a73e8;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.queue-number-value {
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--text-main);
+  font-family: "Cairo", sans-serif;
+  line-height: 1.1;
+  letter-spacing: 2px;
+}
+
+.queue-wait-section {
+  padding: 0 24px 20px;
+}
+
+.queue-wait-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.queue-wait-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.queue-wait-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  font-family: "Cairo", sans-serif;
+}
+
+.queue-progress-bar {
+  width: 100%;
+  height: 10px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.queue-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #1a73e8, #34a853, #f9ab00, #ea4335);
+  background-size: 200% 100%;
+  animation: queueProgressShimmer 2.5s ease infinite;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 60%;
+}
+
+@keyframes queueProgressShimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.queue-badges {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+
+.queue-badge:hover {
+  transform: translateY(-1px);
+}
+
+.queue-badge-people {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.15);
+}
+
+[data-theme="dark"] .queue-badge-people {
+  background: rgba(46, 125, 50, 0.15);
+  color: #66bb6a;
+  border-color: rgba(46, 125, 50, 0.25);
+}
+
+.queue-badge-avg {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid rgba(21, 101, 192, 0.15);
+}
+
+[data-theme="dark"] .queue-badge-avg {
+  background: rgba(21, 101, 192, 0.15);
+  color: #64b5f6;
+  border-color: rgba(21, 101, 192, 0.25);
+}
+
 /* Custom Scrollbar for sleekness */
 ::-webkit-scrollbar {
   width: 8px;

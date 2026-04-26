@@ -780,6 +780,42 @@
           </h3>
           <button class="close-btn" onclick="closeModal('parcel-modal')">✕</button>
         </div>
+
+        <!-- Queue Status Card -->
+        <div class="queue-status-card" id="queue-status-card">
+          <div class="queue-number-section">
+            <span class="queue-number-label">رقمك</span>
+            <div class="queue-number-value" id="queue-number">---</div>
+          </div>
+          <div class="queue-wait-section">
+            <div class="queue-wait-row">
+              <span class="queue-wait-label">وقت الانتظار المتوقع</span>
+              <span class="queue-wait-time" id="queue-wait-time">-- دقيقة</span>
+            </div>
+            <div class="queue-progress-bar">
+              <div class="queue-progress-fill" id="queue-progress-fill"></div>
+            </div>
+          </div>
+          <div class="queue-badges">
+            <div class="queue-badge queue-badge-people">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span id="queue-people-ahead">يوجد -- أشخاص أمامك</span>
+            </div>
+            <div class="queue-badge queue-badge-avg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span id="queue-avg-service">متوسط الخدمة: -- دقائق</span>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">
             <span class="card-icon">

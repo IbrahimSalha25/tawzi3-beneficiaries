@@ -34,7 +34,7 @@
 async function loadParcels() {
   const spinner = document.getElementById("parcels-spinner");
   const content = document.getElementById("parcels-content");
-  const grid    = document.getElementById("parcels-grid");
+  const grid = document.getElementById("parcels-grid");
 
   spinner.classList.remove("hidden");
   content.classList.add("hidden");
@@ -61,7 +61,7 @@ async function loadParcels() {
     const parcelsData = [];
 
     for (const distDoc of distSnapshot.docs) {
-      const dist          = distDoc.data();
+      const dist = distDoc.data();
       const parcelUuidVal = dist.parcel_uuid;
 
       if (!parcelUuidVal) continue;
@@ -77,22 +77,22 @@ async function loadParcels() {
       if (parcelSnap.empty) continue;
 
       const parcelDoc = parcelSnap.docs[0];
-      const parcel    = parcelDoc.data();
+      const parcel = parcelDoc.data();
 
       // ── Step 3: Exclude expired & un-received parcels ──────────────────────
       if (parcel.status === "انتهى" && dist.status === "لم يستلم") continue;
 
       parcelsData.push({
-        parcelId          : parcelDoc.id,
-        parcelName        : parcel.name         || "---",
-        parcelDescription : parcel.description  || "",
-        parcelType        : parcel.type_parcel   || "---",
-        parcelStatus      : parcel.status        || "---",
-        parcelDateRaw     : parcel.date          || "",
-        parcelDate        : formatArabicDate(parcel.date),
-        distributionStatus: dist.status          || "---",
+        parcelId: parcelDoc.id,
+        parcelName: parcel.name || "---",
+        parcelDescription: parcel.description || "",
+        parcelType: parcel.type_parcel || "---",
+        parcelStatus: parcel.status || "---",
+        parcelDateRaw: parcel.date || "",
+        parcelDate: formatArabicDate(parcel.date),
+        distributionStatus: dist.status || "---",
         distributionDateRaw: dist.distribution_date || "",
-        distributionDate  : formatArabicDate(dist.distribution_date),
+        distributionDate: formatArabicDate(dist.distribution_date),
       });
     }
 
@@ -172,14 +172,96 @@ function _emptyParcelsHTML() {
  * Show full parcel details in a modal.
  * @param {Object} item - Parcel + distribution data object
  */
+// Global storage for queue timers (keyed by parcelId)
+window._queueTimers = window._queueTimers || {};
+// Track which parcel is currently being viewed
+window._activeQueueParcelId = null;
+
 function showParcelDetails(item) {
-  document.getElementById("detail-parcel-name").textContent   = item.parcelName;
-  document.getElementById("detail-parcel-type").textContent   = item.parcelType;
+  document.getElementById("detail-parcel-name").textContent = item.parcelName;
+  document.getElementById("detail-parcel-type").textContent = item.parcelType;
   document.getElementById("detail-parcel-status").textContent = item.parcelStatus;
-  document.getElementById("detail-parcel-date").textContent   = item.parcelDate;
-  document.getElementById("detail-parcel-desc").textContent   = item.parcelDescription || "لا يوجد وصف";
-  document.getElementById("detail-dist-status").textContent   = item.distributionStatus;
-  document.getElementById("detail-dist-date").textContent     = item.distributionDate;
+  document.getElementById("detail-parcel-date").textContent = item.parcelDate;
+  document.getElementById("detail-parcel-desc").textContent = item.parcelDescription || "لا يوجد وصف";
+  document.getElementById("detail-dist-status").textContent = item.distributionStatus;
+  document.getElementById("detail-dist-date").textContent = item.distributionDate;
+
+  // ── Queue Status Card (always visible) ──────────────────────────────────────
+  const queueCard = document.getElementById("queue-status-card");
+  queueCard.style.display = "block";
+
+  // Generate a queue ticket from beneficiary id
+  const userIdStr = (currentUser && currentUser.national_id) || "000";
+  const ticketLetter = String.fromCharCode(65 + (userIdStr.charCodeAt(0) % 26));
+  const ticketNum = (parseInt(userIdStr.slice(-3), 10) % 500) || 1;
+  document.getElementById("queue-number").textContent = ticketLetter + "-" + ticketNum;
+
+  // Simulated queue metrics based on a hash of parcel id
+  const seed = item.parcelId
+    ? item.parcelId.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    : 42;
+  const peopleAhead = (seed % 8) + 1;
+  const avgService = ((seed % 4) + 3);
+  const waitMinutes = peopleAhead * avgService;
+
+  document.getElementById("queue-people-ahead").textContent = "يوجد " + peopleAhead + " أشخاص أمامك";
+  document.getElementById("queue-avg-service").textContent = "متوسط الخدمة: " + avgService + " دقائق";
+
+  // ── Persistent Live Countdown Timer ─────────────────────────────────────────
+  const timerId = item.parcelId || "default";
+  window._activeQueueParcelId = timerId;
+
+  // Initialize timer for this parcel if first time
+  if (!window._queueTimers[timerId]) {
+    window._queueTimers[timerId] = {
+      totalSeconds: waitMinutes * 60,
+      totalSecondsInitial: waitMinutes * 60,
+      intervalId: null,
+    };
+  }
+
+  const timerState = window._queueTimers[timerId];
+
+  // Function to render current timer state to the DOM
+  function renderTimerToDOM() {
+    if (timerState.totalSeconds <= 0) {
+      document.getElementById("queue-wait-time").textContent = "حان دورك! 🎉";
+      document.getElementById("queue-progress-fill").style.width = "100%";
+      return;
+    }
+    const mins = Math.floor(timerState.totalSeconds / 60);
+    const secs = timerState.totalSeconds % 60;
+    const timeText = mins > 0
+      ? mins + " دقيقة و " + secs + " ثانية"
+      : secs + " ثانية";
+    document.getElementById("queue-wait-time").textContent = timeText;
+
+    const elapsed = timerState.totalSecondsInitial - timerState.totalSeconds;
+    const progressPct = Math.min(100, Math.round((elapsed / timerState.totalSecondsInitial) * 100));
+    document.getElementById("queue-progress-fill").style.width = progressPct + "%";
+  }
+
+  // Show current state immediately
+  renderTimerToDOM();
+
+  // Start background interval only if not already running
+  if (!timerState.intervalId) {
+    timerState.intervalId = setInterval(function () {
+      // Always count down in memory
+      if (timerState.totalSeconds > 0) {
+        timerState.totalSeconds--;
+      } else {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+      }
+
+      // Only update DOM if this parcel is currently being viewed
+      if (window._activeQueueParcelId === timerId) {
+        renderTimerToDOM();
+      }
+    }, 1000);
+  }
+
   openModal("parcel-modal");
 }
 
@@ -195,8 +277,8 @@ function showParcelDetails(item) {
 function getStatusBadgeClass(status) {
   switch (status) {
     case "تم الاستلام": return "badge-received";
-    case "لم يستلم":   return "badge-pending";
-    default:           return "badge-active";
+    case "لم يستلم": return "badge-pending";
+    default: return "badge-active";
   }
 }
 
@@ -222,12 +304,12 @@ function formatArabicDate(dateString) {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     return new Intl.DateTimeFormat("ar-EG", {
-      year   : "numeric",
-      month  : "long",
-      day    : "numeric",
-      hour   : "numeric",
-      minute : "2-digit",
-      hour12 : true,
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     }).format(date);
   } catch {
     return dateString;
